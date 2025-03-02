@@ -3,6 +3,8 @@ extends EditorPlugin
 
 var script_editor: Control
 var code_edit: CodeEdit
+var currentScript: String
+var currentGutterIndex: int
 
 func _enter_tree():
 	print("Hello")
@@ -13,52 +15,86 @@ func _enter_tree():
 	
 	code_edit = get_code_edit(script_editor)
 	if code_edit:
-		print("adding gutter")
-		code_edit.add_gutter(1)
-		add_button_to_gutter(code_edit)
+		add_gutter(code_edit)
 
 func _exit_tree():
+	code_edit.remove_gutter(currentGutterIndex)
 	print("Goodbye!")
 
 func get_code_edit(script_editor: ScriptEditor) -> CodeEdit:
 	print("looking for code edit")
 	var editor := script_editor.get_current_editor()
-	print(editor)
 	if editor and editor.has_method("get_base_editor"):
 		print("returning code edit")
 		return editor.get_base_editor()  # Returns the CodeEdit instance
 	return null
 
-func add_button_to_gutter(code_edit: CodeEdit):
-	print("Adding button")
-	# Create a button
-	var button = Button.new()
-	button.text = "Click Me"
-	
-	code_edit.set_line_gutter_clickable(1, 1, true)
-	code_edit.set_line_gutter_text(1, 1, "➡️")
-	code_edit.set_gutter_name(1, "Tests")
+func add_gutter(code_edit: CodeEdit):
+	currentGutterIndex = code_edit.get_gutter_count()
+	code_edit.add_gutter(currentGutterIndex)
+	code_edit.set_gutter_name(currentGutterIndex, "Tests")
 	code_edit.connect("gutter_clicked", on_line_clicked)
 
-func _on_button_pressed(line: int):
-	print("Button clicked on line:", line + 1)
+func add_button_to_gutter(code_edit: CodeEdit, line: int):
+	print("Adding button")
+	code_edit.set_line_gutter_clickable(line, currentGutterIndex, true)
+	code_edit.set_line_gutter_text(line, currentGutterIndex, "➡️")
+
+func read_script_lines(script_path: String):
+	var file = FileAccess.open(script_path, FileAccess.READ)
+	var currentLine = 0;
+	if not file:
+		print("Failed to open file: ", script_path)
+		return
+	while not file.eof_reached():
+		var line = file.get_line()
+		if line.begins_with("func test_"):
+			print("found test!")
+			add_button_to_gutter(code_edit, currentLine)
+		else:
+			code_edit.set_line_gutter_text(currentLine, currentGutterIndex, "")
+		currentLine = currentLine + 1
+
+func read_specific_line(file_path: String, line_number: int) -> String:
+	var file = FileAccess.open(file_path, FileAccess.READ)
+	if not file:
+		print("Failed to open file: ", file_path)
+		return ""
+	var current_line = 0
+	while not file.eof_reached():
+		var line = file.get_line()
+		if current_line == line_number:
+			return line
+		current_line += 1
+	
+	return ""  # Return empty if the line number is out of range
 
 func on_script_changed(arg: GDScript):
 	print("script changed")
-	print(arg.resource_path)
+	code_edit.remove_gutter(currentGutterIndex)
+	currentScript = arg.resource_path
+	code_edit = get_code_edit(script_editor)
+	add_gutter(code_edit)
+	read_script_lines(currentScript)
 
 func on_script_closed(arg: GDScript):
 	print("script closed")
-	print(arg.resource_path)
+	currentScript = ""
 
-func on_line_clicked(first, second):
+func on_line_clicked(line: int, gutterIndex: int):
 	print("line clicked")
-	print(first)
-	print(second)
-	var script = ResourceLoader.load("res://Tests/test_math_helper.gd")
+	var script = ResourceLoader.load(currentScript)
 	if script:
 		var instance = script.new()
-		instance.test_addition()
+		var lineText = read_specific_line(currentScript, line)
+		if lineText.begins_with("func test_"):
+			var parenPosition = lineText.find("(")
+			var functionName = lineText.substr(5, parenPosition - 5)
+			print("method:")
+			print(functionName)
+			
+			instance.call(functionName)
+		else:
+			print("no test found on clicked line")
 	else:
 		print("Failed to load script")
-	
