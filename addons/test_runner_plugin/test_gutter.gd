@@ -5,6 +5,7 @@ var script_editor: Control
 var code_edit: CodeEdit
 var currentScript: String
 var currentGutterIndex: int
+var originalPushError
 
 func _enter_tree():
 	print("Hello")
@@ -22,10 +23,8 @@ func _exit_tree():
 	print("Goodbye!")
 
 func get_code_edit(script_editor: ScriptEditor) -> CodeEdit:
-	print("looking for code edit")
 	var editor := script_editor.get_current_editor()
 	if editor and editor.has_method("get_base_editor"):
-		print("returning code edit")
 		return editor.get_base_editor()  # Returns the CodeEdit instance
 	return null
 
@@ -36,7 +35,6 @@ func add_gutter(code_edit: CodeEdit):
 	code_edit.connect("gutter_clicked", on_line_clicked)
 
 func add_button_to_gutter(code_edit: CodeEdit, line: int):
-	print("Adding button")
 	code_edit.set_line_gutter_clickable(line, currentGutterIndex, true)
 	code_edit.set_line_gutter_text(line, currentGutterIndex, "➡️")
 
@@ -49,7 +47,6 @@ func read_script_lines(script_path: String):
 	while not file.eof_reached():
 		var line = file.get_line()
 		if line.begins_with("func test_"):
-			print("found test!")
 			add_button_to_gutter(code_edit, currentLine)
 		else:
 			code_edit.set_line_gutter_text(currentLine, currentGutterIndex, "")
@@ -82,7 +79,6 @@ func on_script_closed(arg: GDScript):
 	currentScript = ""
 
 func on_line_clicked(line: int, gutterIndex: int):
-	print("line clicked")
 	var script = ResourceLoader.load(currentScript)
 	if script:
 		var instance = script.new()
