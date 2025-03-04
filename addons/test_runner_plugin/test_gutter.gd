@@ -38,6 +38,14 @@ func add_button_to_gutter(code_edit: CodeEdit, line: int):
 	code_edit.set_line_gutter_clickable(line, currentGutterIndex, true)
 	code_edit.set_line_gutter_text(line, currentGutterIndex, "➡️")
 
+func add_success_to_gutter(code_edit: CodeEdit, line: int):
+	code_edit.set_line_gutter_clickable(line, currentGutterIndex, true)
+	code_edit.set_line_gutter_text(line, currentGutterIndex, "🟢")
+
+func add_failure_to_gutter(code_edit: CodeEdit, line: int):
+	code_edit.set_line_gutter_clickable(line, currentGutterIndex, true)
+	code_edit.set_line_gutter_text(line, currentGutterIndex, "🔴")
+
 func read_script_lines(script_path: String):
 	var file = FileAccess.open(script_path, FileAccess.READ)
 	var currentLine = 0;
@@ -69,6 +77,7 @@ func read_specific_line(file_path: String, line_number: int) -> String:
 func on_script_changed(arg: GDScript):
 	print("script changed")
 	code_edit.remove_gutter(currentGutterIndex)
+	code_edit.disconnect("gutter_clicked", on_line_clicked)
 	currentScript = arg.resource_path
 	code_edit = get_code_edit(script_editor)
 	add_gutter(code_edit)
@@ -85,11 +94,13 @@ func on_line_clicked(line: int, gutterIndex: int):
 		var lineText = read_specific_line(currentScript, line)
 		if lineText.begins_with("func test_"):
 			var parenPosition = lineText.find("(")
-			var functionName = lineText.substr(5, parenPosition - 5)
-			print("method:")
-			print(functionName)
-			
+			var functionName = lineText.substr(5, parenPosition - 5)			
 			instance.call(functionName)
+			if Asserter.failed:
+				add_failure_to_gutter(code_edit, line)
+			else:
+				add_success_to_gutter(code_edit, line)
+			Asserter.failed = false
 		else:
 			print("no test found on clicked line")
 	else:

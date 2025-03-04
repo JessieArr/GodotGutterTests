@@ -11,4 +11,3 @@ func test_addition():
 func test_something_else():
 	print("something else")
 	Asserter.myAssert(false)
-	assert(false)
